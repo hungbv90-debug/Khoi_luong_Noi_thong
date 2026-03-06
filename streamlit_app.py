@@ -1693,16 +1693,23 @@ with tab1:
                 
                 def extract_ong(loai_chuoi, so_ong_tang):
                     res = []
-                    if "Không ống" in loai_chuoi or so_ong_tang == 0:
+                    if "Không ống" in loai_chuoi:
                         return res
-                    parts = [p.strip() for p in loai_chuoi.split('+')]
+                    parts = [p.strip() for p in loai_chuoi.split('+') if p.strip()]
+                    if not parts:
+                        return res
+                    
                     if len(parts) == 1:
-                        res.append((parts[0], so_ong_tang))
-                    elif len(parts) == 2 and so_ong_tang == 2:
-                        res.append((parts[0], 1))
-                        res.append((parts[1], 1))
+                        res.append((parts[0], max(1, so_ong_tang)))
                     else:
-                        res.append((loai_chuoi, so_ong_tang))
+                        so_loai = len(parts)
+                        total_ong = max(so_ong_tang, so_loai)
+                        
+                        so_ong_loai_1 = total_ong - so_loai + 1
+                        res.append((parts[0], so_ong_loai_1))
+                        for i in range(1, so_loai):
+                            res.append((parts[i], 1))
+                            
                     return res
                 
                 danh_sach_ong = extract_ong(loai_ong_t1, so_ong_t1)
