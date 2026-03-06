@@ -7,7 +7,10 @@ import hashlib
 import json
 import os
 import urllib.request
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
+
+# Create a constant for Vietnam timezone (UTC+7)
+VN_TZ = timezone(timedelta(hours=7))
 
 # --- CẤU HÌNH TRANG LÀM VIỆC ---
 st.set_page_config(page_title="Công cụ Nối thông", layout="wide")
@@ -94,7 +97,7 @@ def _record_login(username):
     """Ghi nhận thời gian đăng nhập và vị trí IP."""
     users = _load_users()
     if username in users:
-        users[username]["last_login"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        users[username]["last_login"] = datetime.now(VN_TZ).strftime("%Y-%m-%d %H:%M:%S")
         users[username]["login_count"] = users[username].get("login_count", 0) + 1
         
         # Lưu vết IP và địa điểm
@@ -107,7 +110,7 @@ def _record_activity(username):
     """Ghi nhận hoạt động gần nhất (heartbeat)."""
     if "active_users" not in st.session_state:
         st.session_state.active_users = {}
-    st.session_state.active_users[username] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    st.session_state.active_users[username] = datetime.now(VN_TZ).strftime("%Y-%m-%d %H:%M:%S")
 
 def _authenticate(username, password=""):
     """Xác thực người dùng. Chỉ hỏi mật khẩu đối với Admin."""
@@ -126,7 +129,7 @@ def _authenticate(username, password=""):
         new_user = {
             "role": "user",
             "display_name": username,
-            "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "created_at": datetime.now(VN_TZ).strftime("%Y-%m-%d %H:%M:%S"),
             "last_login": None,
             "login_count": 0
         }
@@ -243,7 +246,7 @@ def _show_admin_panel():
                     users[new_username] = {
                         "role": new_role,
                         "display_name": new_display,
-                        "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                        "created_at": datetime.now(VN_TZ).strftime("%Y-%m-%d %H:%M:%S"),
                         "last_login": None,
                         "login_count": 0
                     }
