@@ -1096,12 +1096,19 @@ def aggregate_notes(notes):
         n = str(n).strip()
         if not n: continue
         
-        # 1. Kiểm tra xem có phải dạng vận chuyển không: "X + Y - Z"
-        m_vc = re.match(r'^([\d\.]+)\s*\+\s*([\d\.]+)\s*\-\s*([\d\.]+)$', n)
-        if m_vc:
-            v_dao, v_pha, v_lap = map(float, m_vc.groups())
+        # 1. Kiểm tra xem có phải dạng vận chuyển không: "X + Y - Z" hoặc "X - Y"
+        m_vc_3 = re.match(r'^([\d\.]+)\s*\+\s*([\d\.]+)\s*\-\s*([\d\.]+)$', n)
+        m_vc_2 = re.match(r'^([\d\.]+)\s*\-\s*([\d\.]+)$', n)
+        if m_vc_3:
+            v_dao, v_pha, v_lap = map(float, m_vc_3.groups())
             total_v_dao += v_dao
             total_v_pha += v_pha
+            total_v_lap += v_lap
+            has_vc_notes = True
+            continue
+        elif m_vc_2:
+            v_dao, v_lap = map(float, m_vc_2.groups())
+            total_v_dao += v_dao
             total_v_lap += v_lap
             has_vc_notes = True
             continue
@@ -1129,10 +1136,17 @@ def aggregate_notes(notes):
     res = []
     
     # Nếu là ghi chú vận chuyển, trả về 1 dòng tổng duy nhất
+    vc_str = ""
+    if has_vc_notes:
+        if total_v_pha > 0:
+            vc_str = f"{total_v_dao:g} + {total_v_pha:g} - {total_v_lap:g}"
+        else:
+            vc_str = f"{total_v_dao:g} - {total_v_lap:g}"
+
     if has_vc_notes and not grouped and not pure_numbers and not text_others and not div_100_parts:
-        return f"{total_v_dao:g} + {total_v_pha:g} - {total_v_lap:g}"
+        return vc_str
     elif has_vc_notes:
-        res.append(f"{total_v_dao:g} + {total_v_pha:g} - {total_v_lap:g}")
+        res.append(vc_str)
 
     # Xử lý các phần / 100
     if div_100_parts:
@@ -1839,7 +1853,7 @@ with tab1:
                                 s_v_o = lambda l_c3, s_o: math.pi * (get_pipe_radius(l_c3)**2) * s_o if s_o > 0 else 0
                                 kl = max(0, kl - (s_v_o(loai_ong_t1, so_ong_t1) + s_v_o(loai_ong_t2, so_ong_t2)) * L_pipe_actual)
                             
-                            if type_l == "m3":
+                            if name_l == "Đất đầm chặt K=0.95":
                                 row_v_backfill += kl
                             
                             # Hiển thị con số cụ thể trong diễn giải
@@ -1901,7 +1915,13 @@ with tab1:
                             })
                         curr_d += h_l
                     
-                    row_v_vc = row_v_pha_do + row_v_dao - row_v_backfill
+                    if any(x in raw_upper for x in ["TE", "ĐX", "GN", "GBT_DA", "BLOCK"]):
+                        row_v_vc = row_v_dao - row_v_backfill
+                        diengiai_vc = f"{row_v_dao:g} - {row_v_backfill:g}"
+                    else:
+                        row_v_vc = row_v_pha_do + row_v_dao - row_v_backfill
+                        diengiai_vc = f"{row_v_dao:g} + {row_v_pha_do:g} - {row_v_backfill:g}"
+                        
                     if row_v_vc > 0:
                         ten_vc = "Vận chuyển đất bằng ôtô tự đổ 5 tấn trong phạm vi <= 1000m, đất cấp II" if str(cap_dat) == "2" else "Vận chuyển đất bằng ôtô tự đổ 5 tấn trong phạm vi <= 1000m, đất cấp III"
                         all_results.append({
@@ -1909,7 +1929,7 @@ with tab1:
                             "Tuyến/Đoạn": tuyen, 
                             "Hạng mục": ten_vc, 
                             "ĐVT": "m3", 
-                            "Diễn giải": f"{row_v_dao:g} + {row_v_pha_do:g} - {row_v_backfill:g}", 
+                            "Diễn giải": diengiai_vc, 
                             "Khối lượng": row_v_vc
                         })
 
@@ -2173,7 +2193,13 @@ with tab1:
 
 
                     # --- TÍNH VẬN CHUYỂN BỂ GA ---
-                    v_vc_be = row_v_dao_be + row_v_pha_do_be - row_v_backfill_be
+                    if any(x in kc_be for x in ["TE", "ĐX", "GN", "GBT_DA", "BLOCK"]):
+                        v_vc_be = row_v_dao_be - row_v_backfill_be
+                        diengiai_vc_be = f"{row_v_dao_be:g} - {row_v_backfill_be:g}"
+                    else:
+                        v_vc_be = row_v_dao_be + row_v_pha_do_be - row_v_backfill_be
+                        diengiai_vc_be = f"{row_v_dao_be:g} + {row_v_pha_do_be:g} - {row_v_backfill_be:g}"
+
                     if v_vc_be > 0:
                         cap_dat_be = row.get("Cấp đất", 3)
                         ten_vc_be = "Vận chuyển đất bằng ôtô tự đổ 5 tấn trong phạm vi <= 1000m, đất cấp II" if str(cap_dat_be) == "2" or cap_dat_be == 2 else "Vận chuyển đất bằng ôtô tự đổ 5 tấn trong phạm vi <= 1000m, đất cấp III"
@@ -2181,7 +2207,7 @@ with tab1:
                             "Nhóm": "5. Vận chuyển đất thừa", "Tuyến/Đoạn": f"Bể {vi_tri}", 
                             "Hạng mục": ten_vc_be, 
                             "ĐVT": "m3", 
-                            "Diễn giải": f"{row_v_dao_be:g} + {row_v_pha_do_be:g} - {row_v_backfill_be:g}", 
+                            "Diễn giải": diengiai_vc_be, 
                             "Khối lượng": v_vc_be
                         })
 
@@ -2596,7 +2622,7 @@ methodology_data_all = [
     ["Nhóm 4. Hoàn trả", "Làm mặt đường BT nhựa hạt mịn, chiều dày mặt đường đã lèn ép 5cm", "Trải nhựa bề mặt Asphalt hạt mịn", "R_miệng × L đo"],
     ["Nhóm 4. Hoàn trả", "Bê tông mặt đường, chiều dày mặt đường <=25cm, đá 2x4, vữa BT M250", "Bề mặt bê tông đường", "R_miệng × Dày_lớp × L đo"],
     ["Nhóm 4. Hoàn trả", "Hoàn trả mặt hè bê tông dầy 10cm, đá 2x4, mác 250", "Hoàn trả BT mặt hè", "R_miệng × 0.10 × L đo"],
-    ["Nhóm 5. Vận chuyển đất thừa", "Vận chuyển đất bằng ôtô tự đổ 5 tấn trong phạm vi <= 1000m, đất cấp II / cấp III", "Vận chuyển đất thừa ra bãi thải", "Đào + Phá - Lấp"],
+    ["Nhóm 5. Vận chuyển đất thừa", "Vận chuyển đất bằng ôtô tự đổ 5 tấn trong phạm vi <= 1000m, đất cấp II / cấp III", "Vận chuyển đất thừa ra bãi thải", "Đào + Phá - Lấp (Gạch/Đá, Block: Đào - Lấp)"],
 ]
 
 # Function to add methodology sheet to an ExcelWriter object
@@ -2736,7 +2762,7 @@ with tab3:
         st.markdown("""
         | Hạng mục thực tế trên báo cáo | Diễn giải chi tiết | Công thức tính toán |
         | :--- | :--- | :--- |
-        | - **Vận chuyển đất bằng ôtô tự đổ 5 tấn <br>trong phạm vi <= 1000m, đất cấp II / cấp III** | Vận chuyển đất thừa | `Đào + Phá - Lấp` |
+        | - **Vận chuyển đất bằng ôtô tự đổ 5 tấn <br>trong phạm vi <= 1000m, đất cấp II / cấp III** | Vận chuyển đất thừa | **Chung:** `Đào + Phá - Lấp`<br>**Gạch/Đá, Block:** `Đào - Lấp` |
         """, unsafe_allow_html=True)
 
     st.markdown("""
