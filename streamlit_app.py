@@ -7,6 +7,7 @@ import hashlib
 import json
 import os
 import urllib.request
+import socket
 from datetime import datetime, timezone, timedelta
 
 # Create a constant for Vietnam timezone (UTC+7)
@@ -58,19 +59,11 @@ def _save_users(users):
 
 def _get_client_ip():
     """Lấy IP của người dùng."""
-    # Thử qua st.context (Mới có từ phiên bản gần đây)
+    # Thử qua st.context (Mới nhất)
     try:
-        if hasattr(st, "context") and hasattr(st.context, "headers"):
-            headers = st.context.headers
-            ip = headers.get("X-Forwarded-For", headers.get("X-Real-IP", ""))
-            if ip: return ip.split(",")[0].strip()
-    except:
-        pass
-    # Thử gọi từ WebSocket Header internal 
-    try:
-        from streamlit.web.server.websocket_headers import _get_websocket_headers
-        headers = _get_websocket_headers()
-        ip = headers.get("X-Forwarded-For", headers.get("Remote-Addr", ""))
+        from streamlit import context
+        headers = context.headers
+        ip = headers.get("X-Forwarded-For", headers.get("X-Real-IP", ""))
         if ip: return ip.split(",")[0].strip()
     except:
         pass
@@ -112,17 +105,11 @@ def _record_activity(username):
         st.session_state.active_users = {}
     st.session_state.active_users[username] = datetime.now(VN_TZ).strftime("%Y-%m-%d %H:%M:%S")
 
-def _authenticate(username, password=""):
-    """Xác thực người dùng. Chỉ hỏi mật khẩu đối với Admin."""
+def _authenticate(username):
+    """Xác thực người dùng. Không còn yêu cầu mật khẩu ở đây."""
     users = _load_users()
     
     if username in users:
-        # Nếu là admin, yêu cầu mật khẩu
-        if users[username].get("role") == "admin":
-            if users[username].get("password_hash") == _hash_pw(password):
-                return True, users[username]
-            else:
-                return False, None
         return True, users[username]
     else:
         # Tự động tạo user mới nếu chưa có
@@ -159,16 +146,16 @@ def _show_login_page():
             saved_username = st.query_params.get("saved_user", "")
             
             username = st.text_input("👤 Tên sử dụng", value=saved_username, placeholder="Nhập tên của bạn để bắt đầu...")
-            password = st.text_input("🔑 Mật khẩu (Bỏ trống nếu không phải Admin)", type="password")
+            # Bỏ mật khẩu ở màn hình chính theo yêu cầu
             remember_me = st.checkbox("Ghi nhớ tên sử dụng trên thiết bị này", value=bool(saved_username))
             
-            submit = st.form_submit_button("🚀 Đăng nhập", use_container_width=True, type="primary")
+            submit = st.form_submit_button("🚀 Bắt đầu", use_container_width=True, type="primary")
             
             if submit:
                 if not username:
                     st.error("Vui lòng nhập tên sử dụng!")
                 else:
-                    success, user_info = _authenticate(username, password)
+                    success, user_info = _authenticate(username)
                     if success:
                         if remember_me:
                             st.query_params["saved_user"] = username
@@ -182,8 +169,6 @@ def _show_login_page():
                         st.session_state.display_name = user_info.get("display_name", username)
                         _record_login(username)
                         st.rerun()
-                    else:
-                        st.error("❌ Mật khẩu không đúng đối với tài khoản Admin!")
         
 
 
@@ -253,13 +238,15 @@ def _show_admin_panel():
                     _save_users(users)
                     st.success(f"✅ Đã tạo tài khoản '{new_username}' ({new_display})")
 
-# --- KIỂM TRA ĐĂNG NHẬP ---
+# --- TỰ ĐỘNG ĐĂNG NHẬP ---
 if "authenticated" not in st.session_state:
-    st.session_state.authenticated = False
-
-if not st.session_state.authenticated:
-    _show_login_page()
-    st.stop()
+    computer_name = socket.gethostname()
+    st.session_state.authenticated = True
+    st.session_state.username = computer_name
+    st.session_state.user_role = "user"
+    st.session_state.display_name = f"Máy: {computer_name}"
+    _authenticate(computer_name) # Tạo user nếu chưa có
+    _record_login(computer_name) # Ghi nhận lần đầu truy cập
 
 # Ghi nhận hoạt động
 _record_activity(st.session_state.username)
@@ -267,14 +254,22 @@ _record_activity(st.session_state.username)
 # Xử lý trang Admin
 if st.session_state.get("show_admin", False):
     with st.sidebar:
-        st.markdown(f"👋 Xin chào, **{st.session_state.get('display_name', st.session_state.username)}**")
-        if st.button("🚪 Đăng xuất", use_container_width=True):
-            st.session_state.authenticated = False
-            st.session_state.show_admin = False
-            st.rerun()
         if st.button("⬅️ Quay lại Ứng dụng", use_container_width=True):
             st.session_state.show_admin = False
             st.rerun()
+    
+    # Kiểm tra mật khẩu admin (232109)
+    if not st.session_state.get("admin_verified", False):
+        st.markdown("### 🔐 Xác thực Quyền Quản trị")
+        admin_pw = st.text_input("Nhập mật khẩu quản trị để tiếp tục:", type="password")
+        if st.button("Xác nhận", type="primary"):
+            if admin_pw == "232109":
+                st.session_state.admin_verified = True
+                st.rerun()
+            else:
+                st.error("❌ Mật khẩu không chính xác!")
+        st.stop()
+        
     _show_admin_panel()
     st.stop()
 # --- CSS TÙY CHỈNH ĐỂ GỌN GIAO DIỆN ---
@@ -1279,15 +1274,9 @@ if 'df_be' not in st.session_state:
 # ==========================================
 
 with st.sidebar:
-    st.markdown(f"👋 Xin chào, **{st.session_state.get('display_name', st.session_state.username)}**")
-    if st.button("🚪 Đăng xuất", use_container_width=True):
-        st.session_state.authenticated = False
-        st.session_state.show_admin = False
+    if st.button("⚙️ Trang Quản Trị", use_container_width=True):
+        st.session_state.show_admin = True
         st.rerun()
-    if st.session_state.get("user_role") == "admin":
-        if st.button("⚙️ Trang Quản Trị", use_container_width=True):
-            st.session_state.show_admin = True
-            st.rerun()
             
     st.divider()
 
@@ -2189,6 +2178,13 @@ with tab1:
                             "Hạng mục": "Phá dỡ kết cấu bê tông bê tông lót nền 10cm dưới kết cấu lớp gạch, đá",
                             "ĐVT": "m3", "Diễn giải": f"1 * ({dai_bi:g} * {rong_bi:g} * 0.1)",
                             "Khối lượng": round(v_pha_bt_lot, 3)
+                        })
+                    elif "BLOCK" in kc_be:
+                        all_results.append({
+                            "Nhóm": "1. Phá dỡ nền tuyến", "Tuyến/Đoạn": f"Bể {vi_tri}", 
+                            "Hạng mục": "Phá dỡ nền hè gạch Block bằng thủ công",
+                            "ĐVT": "m2", "Diễn giải": f"1 * ({dai_bi:g} * {rong_bi:g})",
+                            "Khối lượng": round(S_bi, 3)
                         })
 
 
