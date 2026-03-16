@@ -1454,7 +1454,7 @@ with st.sidebar:
 
 st.title("🏗️ Công cụ Bóc tách Khối lượng Nối thông")
 
-tab1, tab2, tab3 = st.tabs(["🚀 Tính Toán & Báo Cáo", "🔍 Tra Cứu Thông Số", "📑 Các hạng mục tính toán"])
+tab1, tab2, tab3, tab4 = st.tabs(["🚀 Tính Toán & Báo Cáo", "🔍 Tra Cứu Thông Số", "📑 Các hạng mục tính toán", "📖 Hướng dẫn sử dụng"])
 
 with tab1:
     column_config = {
@@ -1781,7 +1781,7 @@ with tab1:
                         if "D32" in loai_c: return 0.032
                         return 0.0
                     
-                    h_cat_min = (get_max_d(loai_ong_t1) * 1) + (get_max_d(loai_ong_t2) * 1 if so_tang == 2 else 0)
+                    h_cat_min = (get_max_d(loai_ong_t1) * 1) + (get_max_d(loai_ong_t2) * 1 if so_tang == 2 else 0) + 0.10 # Thêm 0.05m cát trên và 0.05m cát dưới
                     H_min = H_cung + h_cat_min
                     adjusted_layers = []
                     if H >= H_min:
@@ -2441,11 +2441,16 @@ with tab2:
     with col_kc1:
         if selected_kc in st.session_state.db_ket_cau:
             v = st.session_state.db_ket_cau[selected_kc]
-            t_fixed = sum([float(l["h"]) for l in v.get("layers", []) if str(l["h"]).lower() != "auto" and str(l["h"]).strip() != ""])
-            h_cat_min_val = 0.22 if ("3 ống" in selected_kc or "4 ống" in selected_kc) else 0.11
+            t_fixed_layers = [float(l["h"]) for l in v.get("layers", []) if str(l["h"]).lower() != "auto" and str(l["h"]).strip() != ""]
+            t_fixed = sum(t_fixed_layers)
+            h_ong_min_val = 0.22 if ("3 ống" in selected_kc or "4 ống" in selected_kc) else 0.11
+            h_cat_min_val = h_ong_min_val + 0.10 # Thêm 0.05 cát trên và 0.05 cát dưới
             h_min = t_fixed + h_cat_min_val
             
-            st.markdown(f"**🔹 Tên kết cấu:** `{selected_kc}` &nbsp;&nbsp;👉 <span style='color:red; font-weight:bold;'>ĐỘ SÂU ĐÀO TỐI THIỂU: {h_min:.3f} (m)</span>", unsafe_allow_html=True)
+            formula_parts = [f"{h:g}" for h in t_fixed_layers] + ["0.05", f"{h_ong_min_val:g}", "0.05"]
+            formula_str = " + ".join(formula_parts)
+            
+            st.markdown(f"**🔹 Tên kết cấu:** `{selected_kc}` &nbsp;&nbsp;👉 <span style='color:red; font-weight:bold;'>ĐỘ SÂU ĐÀO TỐI THIỂU: {h_min:.3f}</span><br><span style='color:red; font-weight:bold;'>(m)</span> <span style='color:red;'>(= {formula_str})</span> &nbsp;&nbsp;&nbsp;&nbsp; <span style='color:#a2a2a2; font-size: 0.9em; font-style: italic;'>* Mô phỏng độ sâu theo ống D110, tính toán báo cáo sẽ chia theo tiết diện ống thực tế</span>", unsafe_allow_html=True)
             
             with st.expander("Ghi đè thông số mặc định (Bấm để mở rộng)", expanded=False):
                 new_w_top = st.number_input("Rộng miệng (W_top) (m):", value=float(v['W_top']), format="%.3f", key=f"wt_{selected_kc}")
@@ -2763,6 +2768,16 @@ with tab3:
 
     st.markdown("""
     > [!NOTE]
-    > **Logic Co Giãn Cấu Trúc:** Khi $H_{thực} < H_{thiết\\_kế}$, phần mềm sẽ ưu tiên giữa nguyên chiều dày các lớp bề mặt (Nhựa, Bê tông, Đá dăm) và sẽ bóp nhỏ chiều dày lớp **Đất đắp** hoặc **Cát đệm** từ dưới lên để đảm bảo rãnh khớp với thực tế.
+    > **Logic Co Giãn Cấu Trúc:** Khi $H_{thực} < H_{thiết\_kế}$, phần mềm sẽ ưu tiên giữa nguyên chiều dày các lớp bề mặt (Nhựa, Bê tông, Đá dăm) và sẽ bóp nhỏ chiều dày lớp **Đất đắp** hoặc **Cát đệm** từ dưới lên để đảm bảo rãnh khớp với thực tế.
     """)
+
+with tab4:
+    st.markdown("### 📖 Hướng dẫn sử dụng & Tính năng sản phẩm")
+    try:
+        # Sử dụng đường dẫn tuyệt đối hoặc tương đối an toàn
+        hdsd_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "HDSD_Tinh_Nang_San_Pham.md")
+        with open(hdsd_path, "r", encoding="utf-8") as f:
+            st.markdown(f.read(), unsafe_allow_html=True)
+    except Exception as e:
+        st.info("Chưa có file hướng dẫn hoặc lỗi đọc file.")
 
