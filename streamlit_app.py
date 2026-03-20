@@ -333,7 +333,7 @@ def init_db_ket_cau():
                 else:
                     if loai == "Asphalt":
                         h_def = 0.60
-                        layers = [ {"name": "BT nhựa hạt mịn", "h": 0.05, "type": "m2"}, {"name": "BT nhựa hạt trung", "h": 0.07, "type": "m3"}, {"name": "Đá dăm loại 1", "h": 0.18, "type": "m3"}, {"name": "Bê tông M150", "h": 0.10, "type": "m3"}, {"name": name_cat, "h": "Auto", "type": "m3"} ]
+                        layers = [ {"name": "BT nhựa hạt mịn", "h": 0.05, "type": "m2"}, {"name": "BT nhựa hạt trung", "h": 0.07, "type": "m3"}, {"name": "Đá dăm loại 1", "h": 0.18, "type": "m3"}, {"name": "Bê tông M150", "h": 0, "type": "m3"}, {"name": name_cat, "h": "Auto", "type": "m3"} ]
                     elif loai == "Hè bê tông":
                         h_def = 0.60
                         layers = [ {"name": "Bê tông mác 250", "h": 0.10, "type": "m3"}, {"name": name_dat, "h": 0.14, "type": "m3"}, {"name": name_cat, "h": "Auto", "type": "m3"} ]
@@ -381,7 +381,7 @@ def init_db_ket_cau():
             {"name": "BT nhựa hạt mịn", "h": 0.05, "type": "m2"}, 
             {"name": "BT nhựa hạt trung", "h": 0.07, "type": "m3"}, 
             {"name": "Đá dăm loại 1", "h": 0.18, "type": "m3"}, 
-            {"name": "Bê tông M150", "h": 0.10, "type": "m3"},
+            {"name": "Bê tông M150", "h": 0, "type": "m3"},
             {"name": name_cat, "h": "Auto", "type": "m3"} 
         ]
     }
@@ -1808,8 +1808,8 @@ with tab1:
                             continue
                         name_l = layer["name"]
                         type_l = layer["type"]
-                        # "Bê tông mác 250" chỉ tính cho kết cấu ĐBT (Đường bê tông)
-                        if name_l == "Bê tông mác 250" and "ĐBT" not in raw_upper:
+                        # "Bê tông mác 250" tính cho kết cấu ĐBT (Đường bê tông) và HBT (Hè bê tông)
+                        if name_l == "Bê tông mác 250" and "ĐBT" not in raw_upper and "HBT" not in raw_upper:
                             curr_d += h_l
                             continue
                         w1 = round(W_top - (W_top - W_bot) * (curr_d / H), 2) if H > 0 else W_top
