@@ -626,7 +626,7 @@ WELL_NAMES = WELL_NAMES_BASIC
 RAW_KET_CAU = ["AL", "HBT", "TE", "ĐX", "GN", "GBT_DA", "ĐBT", "Đất cấp 2", "Đất cấp 3", "Block_KC_B1", "Ngoc"]
 DATA_CAP_DAT = [2, 3]
 DATA_LOAI_ONG = [
-    "D110x5.5", "D110x6.8", "D61", "D32", "D85/65", "D65/50", "D40/30", "D32/25", "Không ống",
+    "D110x5.5", "D110x6.8", "D110/90", "D61", "D32", "D85/65", "D65/50", "D40/30", "D32/25", "Không ống",
     "D110x5.5 + D110x6.8", "D110x5.5 + D61", "D110x6.8 + D61"
 ]
 def clean_excel_value(val):
@@ -843,7 +843,7 @@ def get_template_excel():
         settings_sheet.write(0, 4, "Loại ống", header_fmt)
         settings_sheet.write(0, 5, "Chi tiết", header_fmt)
         pipe_details = {
-            "D110x5.5": "Ống PVC 110x5.5", "D110x6.8": "Ống PVC 110x6.8", "D61": "Ống PVC 61x4.1",
+            "D110x5.5": "Ống PVC 110x5.5", "D110x6.8": "Ống PVC 110x6.8", "D110/90": "Ống xoắn 110/90", "D61": "Ống PVC 61x4.1",
             "D32": "Ống PVC 32", "D85/65": "Ống xoắn 85/65", "D65/50": "Ống xoắn 65/50",
             "D40/30": "Ống xoắn 40/30", "D32/25": "Ống xoắn 32/25", "Không ống": "Không ống",
             "D110x5.5 + D110x6.8": "Dùng 2 ống khác loại",
@@ -1736,7 +1736,7 @@ with tab1:
                     # Phân loại để tính Nhân công (Thi công nền tuyến)
                     # Theo yêu cầu: D110 tính vào mục PVC F <= 114mm, D61, D32 tính vào mục PVC F <= 60mm
                     if ket_cau_raw.upper() != "NGOC":
-                        if "D110" in lo_up and "/" not in lo_up:
+                        if "D110" in lo_up:
                             tong_pvc_114 += count_o
                         elif any(x in lo_up for x in ["D61", "D32"]) and "/" not in lo_up:
                             tong_pvc_60 += count_o
