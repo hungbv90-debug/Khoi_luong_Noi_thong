@@ -489,13 +489,15 @@ DB_BE_SPECS = {
     "GD400": {"dai": 0.744, "rong": 0.744, "cao_day": 0.05, "wall": 0.22, "flange": 0.0},
     "GH600": {"dai": 0.724, "rong": 0.724, "cao_day": 0.05, "wall": 0.11, "flange": 0.0},
     "GD600": {"dai": 0.924, "rong": 0.924, "cao_day": 0.05, "wall": 0.22, "flange": 0.0},
-    "Bệ tủ Sunsea mới nổi 70cm": {"dai": 1.000, "rong": 0.840, "cao_day": 0.10, "wall": 0.0, "flange": 0.10}
+    "Bệ tủ Sunsea mới nổi 70cm": {"dai": 1.000, "rong": 0.840, "cao_day": 0.10, "wall": 0.0, "flange": 0.10},
+    "Bệ tủ Sunsea mới nổi 50cm": {"dai": 0.860, "rong": 0.680, "cao_day": 0.10, "wall": 0.0, "flange": 0.10},
+    "Bệ tủ 288": {"dai": 0.65, "rong": 0.41, "cao_day": 0.10, "wall": 0.0, "flange": 0.10}
 }
 
 def generate_db_be(specs):
     db = {}
     for name, s in specs.items():
-        if name == "Bệ tủ Sunsea mới nổi 70cm":
+        if name in ["Bệ tủ Sunsea mới nổi 70cm", "Bệ tủ Sunsea mới nổi 50cm", "Bệ tủ 288"]:
             db[f"{name} (Dọc)"] = {
                 "bi": s["dai"] + 2 * s["flange"],
                 "long": "-"
@@ -543,7 +545,7 @@ def validate_be_row(row):
     for col in required:
         val = row.get(col)
         # Bỏ qua validate Sâu bể nếu là Bệ tủ Sunsea
-        if col == "Sâu bể (Đo)" and str(row.get("Loại bể", "")).strip() == "Bệ tủ Sunsea mới nổi 70cm":
+        if col == "Sâu bể (Đo)" and str(row.get("Loại bể", "")).strip() in ["Bệ tủ Sunsea mới nổi 70cm", "Bệ tủ Sunsea mới nổi 50cm", "Bệ tủ 288"]:
             continue
             
         if pd.isna(val) or str(val).strip() == "" or (col == "Sâu bể (Đo)" and val == 0):
@@ -2006,6 +2008,8 @@ with tab1:
                     
                     if loai_be == "Bệ tủ Sunsea mới nổi 70cm":
                         sau_do = 0.5
+                    elif loai_be in ["Bệ tủ Sunsea mới nổi 50cm", "Bệ tủ 288"]:
+                        sau_do = 0.3
                     else:
                         sau_do = float(row.get("Sâu bể (Đo)", 0))
                         
@@ -2070,6 +2074,8 @@ with tab1:
                     # --- TÍNH ĐẮP ĐẤT CHO BỂ GA ---
                     if loai_be == "Bệ tủ Sunsea mới nổi 70cm":
                         h_backfill = max(0, 0.4 - h_pha_do_be)
+                    elif loai_be in ["Bệ tủ Sunsea mới nổi 50cm", "Bệ tủ 288"]:
+                        h_backfill = max(0, 0.2 - h_pha_do_be)
                     else:
                         h_backfill = H_dao_be
                         
@@ -2079,7 +2085,7 @@ with tab1:
                     if v_dap_be > 0:
                         row_v_backfill_be += v_dap_be
                         
-                        if loai_be == "Bệ tủ Sunsea mới nổi 70cm":
+                        if loai_be in ["Bệ tủ Sunsea mới nổi 70cm", "Bệ tủ Sunsea mới nổi 50cm", "Bệ tủ 288"]:
                             dien_giai_dap = f"1 * (({dai_bi:g} * {rong_bi:g} * {h_backfill:g}) - ({spec['dai']:g} * {spec['rong']:g} * {h_backfill:g}))"
                         else:
                             dien_giai_dap = f"1 * (({S_bi:g} - {S_well:g}) * {h_backfill:g})"
@@ -2157,6 +2163,10 @@ with tab1:
                         
                     if loai_be == "Bệ tủ Sunsea mới nổi 70cm":
                         add_be_sub_item("Lắp đặt Block móng chân đế tủ POP Sunsea ngoài trời ( loại nổi 70cm)", "bệ", 1, "1")
+                    elif loai_be == "Bệ tủ Sunsea mới nổi 50cm":
+                        add_be_sub_item("Lắp đặt Block móng chân đế tủ POP Sunsea ngoài trời ( loại nổi 50cm)", "bệ", 1, "1")
+                    elif loai_be == "Bệ tủ 288":
+                        add_be_sub_item("Lắp đặt Block móng chân đế tủ 288", "bệ", 1, "1")
 
                     # --- TÍNH PHÁ DỠ & CẮT CHO BỂ GA ---
                     chu_thich_bi = f"{loai_be}: {dai_bi:g}m x {rong_bi:g}m"
