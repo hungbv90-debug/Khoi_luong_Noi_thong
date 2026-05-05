@@ -488,22 +488,33 @@ DB_BE_SPECS = {
     "GH400": {"dai": 0.55, "rong": 0.55, "cao_day": 0.05, "wall": 0.11, "flange": 0.0},
     "GD400": {"dai": 0.744, "rong": 0.744, "cao_day": 0.05, "wall": 0.22, "flange": 0.0},
     "GH600": {"dai": 0.724, "rong": 0.724, "cao_day": 0.05, "wall": 0.11, "flange": 0.0},
-    "GD600": {"dai": 0.924, "rong": 0.924, "cao_day": 0.05, "wall": 0.22, "flange": 0.0}
+    "GD600": {"dai": 0.924, "rong": 0.924, "cao_day": 0.05, "wall": 0.22, "flange": 0.0},
+    "Bệ tủ Sunsea mới nổi 70cm": {"dai": 1.000, "rong": 0.840, "cao_day": 0.10, "wall": 0.0, "flange": 0.10}
 }
 
 def generate_db_be(specs):
     db = {}
     for name, s in specs.items():
-        # Dọc: Lấy dai
-        db[f"{name} (Dọc)"] = {
-            "bi": s["dai"] + 2 * s["flange"],
-            "long": s["dai"] - 2 * s["wall"]
-        }
-        # Ngang: Lấy rong
-        db[f"{name} (Ngang)"] = {
-            "bi": s["rong"] + 2 * s["flange"],
-            "long": s["rong"] - 2 * s["wall"]
-        }
+        if name == "Bệ tủ Sunsea mới nổi 70cm":
+            db[f"{name} (Dọc)"] = {
+                "bi": s["dai"] + 2 * s["flange"],
+                "long": "-"
+            }
+            db[f"{name} (Ngang)"] = {
+                "bi": s["rong"] + 2 * s["flange"],
+                "long": "-"
+            }
+        else:
+            # Dọc: Lấy dai
+            db[f"{name} (Dọc)"] = {
+                "bi": s["dai"] + 2 * s["flange"],
+                "long": s["dai"] - 2 * s["wall"]
+            }
+            # Ngang: Lấy rong
+            db[f"{name} (Ngang)"] = {
+                "bi": s["rong"] + 2 * s["flange"],
+                "long": s["rong"] - 2 * s["wall"]
+            }
     db["Không có"] = {"bi": 0.0, "long": 0.0}
     return db
 
@@ -531,6 +542,10 @@ def validate_be_row(row):
     required = ["Kết cấu bể/ga", "Cấp đất", "Vị trí bể", "Loại bể", "Sâu bể (Đo)"]
     for col in required:
         val = row.get(col)
+        # Bỏ qua validate Sâu bể nếu là Bệ tủ Sunsea
+        if col == "Sâu bể (Đo)" and str(row.get("Loại bể", "")).strip() == "Bệ tủ Sunsea mới nổi 70cm":
+            continue
+            
         if pd.isna(val) or str(val).strip() == "" or (col == "Sâu bể (Đo)" and val == 0):
             required_missing.append(col)
     
@@ -561,6 +576,8 @@ def normalize_cols(df, target_cols):
         "dài đo": "Dài đo", "l ống": "Dài đo", "tâm-tâm": "Dài đo",
         "số tầng": "Số tầng ống", "số ống tầng 2": "Số ống tầng 2", "loại ống tầng 2": "Loại ống tầng 2",
         "kiểu kết nối": "Kiểu kết nối", "kết nối": "Kiểu kết nối",
+        "miệng rãnh": "Miệng rãnh", "miệng": "Miệng rãnh",
+        "đáy rãnh": "Đáy rãnh", "đáy": "Đáy rãnh",
         "vị trí": "Vị trí bể", "sâu bể": "Sâu bể (Đo)"
     }
     new_names = {}
@@ -612,7 +629,7 @@ def map_cap_dat_val(v):
 TEMPLATE_COLUMNS = [
     "STT", "Kết cấu rãnh", "Cấp đất", "Bể đầu", "Bể cuối", "Dài đo", 
     "Số ống tầng 1", "Loại ống tầng 1", "Độ sâu rãnh", "Số tầng ống", "Số ống tầng 2", "Loại ống tầng 2",
-    "Kiểu kết nối"
+    "Kiểu kết nối", "Miệng rãnh", "Đáy rãnh"
 ]
 WELL_IMPORT_COLUMNS = ["STT", "Kết cấu bể/ga", "Cấp đất", "Vị trí bể", "Loại bể", "Sâu bể (Đo)"]
 
@@ -795,8 +812,8 @@ def sync_soil_levels(df, kc_col):
 # Hàm tạo Template rỗng
 def get_template_excel():
     df_template = pd.DataFrame(columns=TEMPLATE_COLUMNS)
-    df_template.loc[0] = [1, "AL", 3, "B1", "B3", 45.5, 2, "D110x6.8", 0.71, 1, 0, "Không ống", "Bể - Bể"]
-    df_template.loc[1] = [2, "HBT", 2, "B3", "G2", 15.0, 1, "D61", 0.6, 1, 0, "Không ống", "Ganivo - Ganivo, Bể"]
+    df_template.loc[0] = [1, "AL", 3, "B1", "B3", 45.5, 2, "D110x6.8", 0.71, 1, 0, "Không ống", "Bể - Bể", 0.45, 0.35]
+    df_template.loc[1] = [2, "HBT", 2, "B3", "G2", 15.0, 1, "D61", 0.6, 1, 0, "Không ống", "Ganivo - Ganivo, Bể", 0.35, 0.25]
     
     df_be_template = pd.DataFrame(columns=WELL_IMPORT_COLUMNS)
     df_be_template.loc[0] = [1, "AL", 3, "GA1", "1DD", 1.2]
@@ -867,7 +884,7 @@ def get_template_excel():
         ws1.set_column('B:C', 20)
         ws1.set_column('D:E', 12)
         ws1.set_column('F:L', 15)
-        ws1.set_column('M:M', 20)
+        ws1.set_column('M:O', 20)
         
         # --- Sheet 2: Data_Be_Ga ---
         ws2 = writer.sheets['Data_Be_Ga']
@@ -1257,7 +1274,7 @@ if 'df' not in st.session_state:
     row = {
         "STT": 1, "Kết cấu rãnh": "AL", "Cấp đất": 3, "Bể đầu": "B1", "Bể cuối": "B3", "Dài đo": 45.5,
         "Số ống tầng 1": 2, "Loại ống tầng 1": "D110x6.8", "Độ sâu rãnh": 0.71, "Số tầng ống": 1, "Số ống tầng 2": 0, "Loại ống tầng 2": "Không ống",
-        "Kiểu kết nối": "Bể - Bể"
+        "Kiểu kết nối": "Bể - Bể", "Miệng rãnh": None, "Đáy rãnh": None
     }
     row["Cảnh Báo Lỗi"] = validate_row(row, st.session_state.db_ket_cau)
     st.session_state.df = pd.DataFrame([row])
@@ -1285,7 +1302,7 @@ with st.sidebar:
         new_item = {
             "STT": len(st.session_state.df) + 1, "Kết cấu rãnh": "AL", "Cấp đất": 3, "Bể đầu": "", "Bể cuối": "", "Dài đo": 0.0,
             "Số ống tầng 1": 2, "Loại ống tầng 1": "D110x6.8", "Độ sâu rãnh": 0.6, "Số tầng ống": 1, "Số ống tầng 2": 0, "Loại ống tầng 2": "Không ống",
-            "Kiểu kết nối": "Bể - Bể"
+            "Kiểu kết nối": "Bể - Bể", "Miệng rãnh": None, "Đáy rãnh": None
         }
         new_item["Cảnh Báo Lỗi"] = validate_row(new_item, st.session_state.db_ket_cau)
         new_row = pd.DataFrame([new_item])
@@ -1365,7 +1382,7 @@ with st.sidebar:
                         if pipe_col in df_import.columns:
                             df_import[pipe_col] = df_import[pipe_col].apply(map_pipe_type)
 
-                    for c in ["Dài đo", "Độ sâu rãnh", "Số ống tầng 2", "Số tầng ống"]:
+                    for c in ["Dài đo", "Độ sâu rãnh", "Số ống tầng 2", "Số tầng ống", "Miệng rãnh", "Đáy rãnh"]:
                         if c in df_import.columns:
                             df_import[c] = df_import[c].astype(str).str.replace(",", ".", regex=False)
                             df_import[c] = pd.to_numeric(df_import[c], errors="coerce")
@@ -1471,6 +1488,8 @@ with tab1:
         "Loại ống tầng 2": st.column_config.SelectboxColumn("Loại ống tầng 2", options=DATA_LOAI_ONG, required=True),
         "Dài đo": st.column_config.NumberColumn("Dài đo (m)", format="%.1f", required=True),
         "Kiểu kết nối": st.column_config.SelectboxColumn("Kiểu kết nối (*)", options=["Bể - Bể", "Ganivo - Ganivo, Bể"], required=True),
+        "Miệng rãnh": st.column_config.NumberColumn("Miệng rãnh (m)", format="%.2f", min_value=0.0),
+        "Đáy rãnh": st.column_config.NumberColumn("Đáy rãnh (m)", format="%.2f", min_value=0.0),
         "Cảnh Báo Lỗi": st.column_config.TextColumn("⚠️ Cảnh Báo Lỗi", disabled=True, width="large")
     }
 
@@ -1584,8 +1603,17 @@ with tab1:
                     H_def = st.session_state.db_ket_cau[ket_cau]["H_def"]
                     # Mặc định lấy theo kết cấu nếu không nhập sâu đo
                     H = float(row["Độ sâu rãnh"]) if not pd.isna(row["Độ sâu rãnh"]) and str(row["Độ sâu rãnh"]).strip() != "" and float(row["Độ sâu rãnh"]) > 0 else H_def
-                    W_top = st.session_state.db_ket_cau[ket_cau]["W_top"]
-                    W_bot = st.session_state.db_ket_cau[ket_cau]["W_bot"]
+                    
+                    # Ưu tiên lấy Miệng rãnh / Đáy rãnh từ dòng nhập, nếu rỗng thì lấy mặc định từ db_ket_cau
+                    try:
+                        W_top = float(row["Miệng rãnh"]) if not pd.isna(row.get("Miệng rãnh")) and str(row.get("Miệng rãnh")).strip() != "" and float(row.get("Miệng rãnh")) > 0 else st.session_state.db_ket_cau[ket_cau]["W_top"]
+                    except:
+                        W_top = st.session_state.db_ket_cau[ket_cau]["W_top"]
+                        
+                    try:
+                        W_bot = float(row["Đáy rãnh"]) if not pd.isna(row.get("Đáy rãnh")) and str(row.get("Đáy rãnh")).strip() != "" and float(row.get("Đáy rãnh")) > 0 else st.session_state.db_ket_cau[ket_cau]["W_bot"]
+                    except:
+                        W_bot = st.session_state.db_ket_cau[ket_cau]["W_bot"]
                     
                     # --- TÍNH ĐÀO ĐẤT ---
                     # Xác định cao độ phá dỡ
@@ -1975,7 +2003,12 @@ with tab1:
                     
                     vi_tri = clean_excel_value(row.get("Vị trí bể", f"Bể {index+1}"))
                     cap_dat = row.get("Cấp đất", 3)
-                    sau_do = float(row.get("Sâu bể (Đo)", 0))
+                    
+                    if loai_be == "Bệ tủ Sunsea mới nổi 70cm":
+                        sau_do = 0.5
+                    else:
+                        sau_do = float(row.get("Sâu bể (Đo)", 0))
+                        
                     if sau_do <= 0:
                         st.warning(f"Bể {vi_tri}: Thiếu 'Sâu bể (Đo)'. Vui lòng nhập đầy đủ!")
                         continue
@@ -2035,18 +2068,28 @@ with tab1:
                     })
 
                     # --- TÍNH ĐẮP ĐẤT CHO BỂ GA ---
-                    h_backfill = H_dao_be
+                    if loai_be == "Bệ tủ Sunsea mới nổi 70cm":
+                        h_backfill = max(0, 0.4 - h_pha_do_be)
+                    else:
+                        h_backfill = H_dao_be
+                        
                     S_well = spec["dai"] * spec["rong"]
                     v_dap_be = (S_bi - S_well) * h_backfill
                     
                     if v_dap_be > 0:
                         row_v_backfill_be += v_dap_be
+                        
+                        if loai_be == "Bệ tủ Sunsea mới nổi 70cm":
+                            dien_giai_dap = f"1 * (({dai_bi:g} * {rong_bi:g} * {h_backfill:g}) - ({spec['dai']:g} * {spec['rong']:g} * {h_backfill:g}))"
+                        else:
+                            dien_giai_dap = f"1 * (({S_bi:g} - {S_well:g}) * {h_backfill:g})"
+                            
                         all_results.append({
                             "Nhóm": "3. Thi công bể",
                             "Tuyến/Đoạn": f"Bể {vi_tri}",
                             "Hạng mục": "Đắp đất xung quanh thành bể, xung quanh tủ POP…, độ chặt yêu cầu K=0,95",
                             "ĐVT": "m3",
-                            "Diễn giải": f"1 * (({S_bi:g} - {S_well:g}) * {h_backfill:g})",
+                            "Diễn giải": dien_giai_dap,
                             "Khối lượng": round(v_dap_be, 3)
                         })
 
@@ -2111,6 +2154,9 @@ with tab1:
                         add_be_sub_item("Xây lắp Ganivo nắp bê tông 400x400 dưới đường", "ganivo", 1, "1")
                     elif loai_be == "GH600":
                         add_be_sub_item("Xây lắp Ganivo nắp bê tông,loại 600 x 600 (trên hè sâu 820 )", "ganivo", 1, "1")
+                        
+                    if loai_be == "Bệ tủ Sunsea mới nổi 70cm":
+                        add_be_sub_item("Lắp đặt Block móng chân đế tủ POP Sunsea ngoài trời ( loại nổi 70cm)", "bệ", 1, "1")
 
                     # --- TÍNH PHÁ DỠ & CẮT CHO BỂ GA ---
                     chu_thich_bi = f"{loai_be}: {dai_bi:g}m x {rong_bi:g}m"
@@ -2379,10 +2425,10 @@ with tab2:
             
             if huong == "Dọc":
                 be_data[loai_be]["Dọc (Bì)"] = f"{v['bi']:.3f}"
-                be_data[loai_be]["Dọc (Lòng)"] = f"{v['long']:.3f}"
+                be_data[loai_be]["Dọc (Lòng)"] = f"{v['long']:.3f}" if isinstance(v['long'], (int, float)) else str(v['long'])
             else:
                 be_data[loai_be]["Ngang (Bì)"] = f"{v['bi']:.3f}"
-                be_data[loai_be]["Ngang (Lòng)"] = f"{v['long']:.3f}"
+                be_data[loai_be]["Ngang (Lòng)"] = f"{v['long']:.3f}" if isinstance(v['long'], (int, float)) else str(v['long'])
                 
         df_be = pd.DataFrame(list(be_data.values()))
         
