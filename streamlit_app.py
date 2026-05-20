@@ -580,6 +580,7 @@ def normalize_cols(df, target_cols):
         "kiểu kết nối": "Kiểu kết nối", "kết nối": "Kiểu kết nối",
         "miệng rãnh": "Miệng rãnh", "miệng": "Miệng rãnh",
         "đáy rãnh": "Đáy rãnh", "đáy": "Đáy rãnh",
+        "sâu cát": "Sâu cát", "sâu cat": "Sâu cát",
         "vị trí": "Vị trí bể", "sâu bể": "Sâu bể (Đo)"
     }
     new_names = {}
@@ -631,7 +632,7 @@ def map_cap_dat_val(v):
 TEMPLATE_COLUMNS = [
     "STT", "Kết cấu rãnh", "Cấp đất", "Bể đầu", "Bể cuối", "Dài đo", 
     "Số ống tầng 1", "Loại ống tầng 1", "Độ sâu rãnh", "Số tầng ống", "Số ống tầng 2", "Loại ống tầng 2",
-    "Kiểu kết nối", "Miệng rãnh", "Đáy rãnh"
+    "Kiểu kết nối", "Miệng rãnh", "Đáy rãnh", "Sâu cát"
 ]
 WELL_IMPORT_COLUMNS = ["STT", "Kết cấu bể/ga", "Cấp đất", "Vị trí bể", "Loại bể", "Sâu bể (Đo)"]
 
@@ -814,8 +815,8 @@ def sync_soil_levels(df, kc_col):
 # Hàm tạo Template rỗng
 def get_template_excel():
     df_template = pd.DataFrame(columns=TEMPLATE_COLUMNS)
-    df_template.loc[0] = [1, "AL", 3, "B1", "B3", 45.5, 2, "D110x6.8", 0.71, 1, 0, "Không ống", "Bể - Bể", 0.45, 0.35]
-    df_template.loc[1] = [2, "HBT", 2, "B3", "G2", 15.0, 1, "D61", 0.6, 1, 0, "Không ống", "Ganivo - Ganivo, Bể", 0.35, 0.25]
+    df_template.loc[0] = [1, "AL", 3, "B1", "B3", 45.5, 2, "D110x6.8", 0.71, 1, 0, "Không ống", "Bể - Bể", 0.45, 0.35, None]
+    df_template.loc[1] = [2, "HBT", 2, "B3", "G2", 15.0, 1, "D61", 0.6, 1, 0, "Không ống", "Ganivo - Ganivo, Bể", 0.35, 0.25, None]
     
     df_be_template = pd.DataFrame(columns=WELL_IMPORT_COLUMNS)
     df_be_template.loc[0] = [1, "AL", 3, "GA1", "1DD", 1.2]
@@ -1276,7 +1277,7 @@ if 'df' not in st.session_state:
     row = {
         "STT": 1, "Kết cấu rãnh": "AL", "Cấp đất": 3, "Bể đầu": "B1", "Bể cuối": "B3", "Dài đo": 45.5,
         "Số ống tầng 1": 2, "Loại ống tầng 1": "D110x6.8", "Độ sâu rãnh": 0.71, "Số tầng ống": 1, "Số ống tầng 2": 0, "Loại ống tầng 2": "Không ống",
-        "Kiểu kết nối": "Bể - Bể", "Miệng rãnh": None, "Đáy rãnh": None
+        "Kiểu kết nối": "Bể - Bể", "Miệng rãnh": None, "Đáy rãnh": None, "Sâu cát": None
     }
     row["Cảnh Báo Lỗi"] = validate_row(row, st.session_state.db_ket_cau)
     st.session_state.df = pd.DataFrame([row])
@@ -1304,7 +1305,7 @@ with st.sidebar:
         new_item = {
             "STT": len(st.session_state.df) + 1, "Kết cấu rãnh": "AL", "Cấp đất": 3, "Bể đầu": "", "Bể cuối": "", "Dài đo": 0.0,
             "Số ống tầng 1": 2, "Loại ống tầng 1": "D110x6.8", "Độ sâu rãnh": 0.6, "Số tầng ống": 1, "Số ống tầng 2": 0, "Loại ống tầng 2": "Không ống",
-            "Kiểu kết nối": "Bể - Bể", "Miệng rãnh": None, "Đáy rãnh": None
+            "Kiểu kết nối": "Bể - Bể", "Miệng rãnh": None, "Đáy rãnh": None, "Sâu cát": None
         }
         new_item["Cảnh Báo Lỗi"] = validate_row(new_item, st.session_state.db_ket_cau)
         new_row = pd.DataFrame([new_item])
@@ -1384,7 +1385,7 @@ with st.sidebar:
                         if pipe_col in df_import.columns:
                             df_import[pipe_col] = df_import[pipe_col].apply(map_pipe_type)
 
-                    for c in ["Dài đo", "Độ sâu rãnh", "Số ống tầng 2", "Số tầng ống", "Miệng rãnh", "Đáy rãnh"]:
+                    for c in ["Dài đo", "Độ sâu rãnh", "Số ống tầng 2", "Số tầng ống", "Miệng rãnh", "Đáy rãnh", "Sâu cát"]:
                         if c in df_import.columns:
                             df_import[c] = df_import[c].astype(str).str.replace(",", ".", regex=False)
                             df_import[c] = pd.to_numeric(df_import[c], errors="coerce")
@@ -1492,6 +1493,7 @@ with tab1:
         "Kiểu kết nối": st.column_config.SelectboxColumn("Kiểu kết nối (*)", options=["Bể - Bể", "Ganivo - Ganivo, Bể"], required=True),
         "Miệng rãnh": st.column_config.NumberColumn("Miệng rãnh (m)", format="%.2f", min_value=0.0),
         "Đáy rãnh": st.column_config.NumberColumn("Đáy rãnh (m)", format="%.2f", min_value=0.0),
+        "Sâu cát": st.column_config.NumberColumn("Sâu cát (m)", format="%.2f", min_value=0.0),
         "Cảnh Báo Lỗi": st.column_config.TextColumn("⚠️ Cảnh Báo Lỗi", disabled=True, width="large")
     }
 
@@ -1798,6 +1800,14 @@ with tab1:
                 
                 # --- HOÀN TRẢ VÀ VẬN CHUYỂN (BỎ QUA NẾU LÀ NGOC) ---
                 if ket_cau_raw.upper() != "NGOC":
+                    H_cat_user = 0.0
+                    try:
+                        val_cat = row.get("Sâu cát")
+                        if not pd.isna(val_cat) and str(val_cat).strip() != "":
+                            H_cat_user = float(val_cat)
+                    except:
+                        pass
+
                     H_cung = sum([float(l["h"]) for l in st.session_state.db_ket_cau[ket_cau]["layers"] if str(l["h"]).lower() != "auto"])
                     def get_max_d(loai_c):
                         if "Không ống" in loai_c:
@@ -1816,11 +1826,14 @@ with tab1:
                     adjusted_layers = []
                     if H >= H_min:
                         for layer in st.session_state.db_ket_cau[ket_cau]["layers"]:
-                            h_val = H - H_cung if str(layer["h"]).lower() == "auto" else float(layer["h"])
+                            if str(layer["h"]).lower() == "auto":
+                                h_val = H_cat_user if H_cat_user > 0 else (H - H_cung)
+                            else:
+                                h_val = float(layer["h"])
                             adjusted_layers.append({"name": layer["name"], "h": h_val, "type": layer["type"]})
                     else:
                         tuyen_warnings[tuyen] = f"Sâu rãnh đào ({H:.3f}m) < Độ sâu tối thiểu ({H_min:.3f}m). Các lớp nền bề mặt sẽ bị co giảm!"
-                        h_cat_actual = h_cat_min if H >= h_cat_min else H
+                        h_cat_actual = H_cat_user if H_cat_user > 0 else (h_cat_min if H >= h_cat_min else H)
                         rem_H = max(0.0, H - h_cat_actual)
                         for layer in [l for l in st.session_state.db_ket_cau[ket_cau]["layers"] if str(l["h"]).lower() != "auto"]:
                             h_req = float(layer["h"])
@@ -1869,8 +1882,15 @@ with tab1:
                                     if "D32" in l_c2: return 0.016
                                     return 0.0
                                 
-                                s_v_o = lambda l_c3, s_o: math.pi * (get_pipe_radius(l_c3)**2) * s_o if s_o > 0 else 0
-                                kl = max(0, kl - (s_v_o(loai_ong_t1, so_ong_t1) + s_v_o(loai_ong_t2, so_ong_t2)) * L_pipe_actual)
+                                # Use unrounded (w1 + w2) / 2 and parsed pipes to match Excel formula exactly!
+                                w_avg = (w1 + w2) / 2
+                                s_v_o_total = 0.0
+                                for l_pipe, s_pipe in danh_sach_ong:
+                                    if s_pipe > 0:
+                                        r = get_pipe_radius(l_pipe)
+                                        if r > 0:
+                                            s_v_o_total += 3.14 * r * r * s_pipe
+                                kl = max(0, (w_avg * h_l - s_v_o_total) * L_actual)
                             
                             if name_l == "Đất đầm chặt K=0.95":
                                 row_v_backfill += kl
