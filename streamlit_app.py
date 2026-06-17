@@ -2093,7 +2093,7 @@ with tab1:
 
                     # --- TÍNH ĐẮP ĐẤT CHO BỂ GA ---
                     if loai_be == "Bệ tủ Sunsea mới nổi 70cm":
-                        h_backfill = max(0, 0.4 - h_pha_do_be)
+                        h_backfill = 0.4
                     elif loai_be in ["Bệ tủ Sunsea mới nổi 50cm", "Bệ tủ 288"]:
                         h_backfill = max(0, 0.2 - h_pha_do_be)
                     else:
