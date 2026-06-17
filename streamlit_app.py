@@ -1623,11 +1623,26 @@ with tab1:
                     # Xác định cao độ phá dỡ
                     h_pha_do = 0.0
                     raw_upper = ket_cau_raw.upper()
-                    if "AL" in raw_upper: h_pha_do = 0.12
-                    elif "ĐBT" in raw_upper: h_pha_do = 0.20
-                    elif "HBT" in raw_upper: h_pha_do = 0.10
-                    elif any(x in raw_upper for x in ["TE", "ĐX", "GN", "GBT_DA"]): h_pha_do = 0.10
-                    elif "BLOCK" in raw_upper: h_pha_do = 0.06
+                    if ket_cau in st.session_state.db_ket_cau:
+                        layers_list = st.session_state.db_ket_cau[ket_cau]["layers"]
+                        if "AL" in raw_upper:
+                            h_pha_do = sum([float(l["h"]) for l in layers_list if any(x in str(l["name"]).lower() for x in ["nhựa", "asphalt"])])
+                        elif "ĐBT" in raw_upper or "HBT" in raw_upper:
+                            h_pha_do = sum([float(l["h"]) for l in layers_list if any(x in str(l["name"]).lower() for x in ["mác 250", "bê tông mác"])])
+                        elif any(x in raw_upper for x in ["TE", "ĐX", "GN", "GBT_DA"]):
+                            h_gach = sum([float(l["h"]) for l in layers_list if any(x in str(l["name"]).lower() for x in ["lát", "terrazzo", "đá xanh", "gạch"])])
+                            h_lot_layer = [float(l["h"]) for l in layers_list if "m150" in str(l["name"]).lower()]
+                            h_lot = h_lot_layer[0] if h_lot_layer else 0.10
+                            h_pha_do = h_gach + h_lot
+                        elif "BLOCK" in raw_upper:
+                            h_pha_do = sum([float(l["h"]) for l in layers_list if "block" in str(l["name"]).lower()])
+                    
+                    if h_pha_do == 0.0:
+                        if "AL" in raw_upper: h_pha_do = 0.12
+                        elif "ĐBT" in raw_upper: h_pha_do = 0.20
+                        elif "HBT" in raw_upper: h_pha_do = 0.10
+                        elif any(x in raw_upper for x in ["TE", "ĐX", "GN", "GBT_DA"]): h_pha_do = 0.10
+                        elif "BLOCK" in raw_upper: h_pha_do = 0.06
                     
                     H_dao = max(0, H - h_pha_do)
                     S_dao_thuc = ((W_top + W_bot) / 2) * H_dao
@@ -1675,11 +1690,16 @@ with tab1:
                                 "ĐVT": "m2", "Diễn giải": f"{L_actual:g} * {W_top:g}",
                                 "Khối lượng": round(L_actual * W_top, 3)
                             })
+                            h_lot = 0.10
+                            if ket_cau in st.session_state.db_ket_cau:
+                                h_lot_layer = [float(l["h"]) for l in st.session_state.db_ket_cau[ket_cau]["layers"] if "m150" in str(l["name"]).lower()]
+                                if h_lot_layer:
+                                    h_lot = h_lot_layer[0]
                             all_results.append({
                                 "Nhóm": "1. Phá dỡ nền tuyến", "Tuyến/Đoạn": tuyen,
                                 "Hạng mục": "Phá dỡ kết cấu bê tông bê tông lót nền 10cm dưới kết cấu lớp gạch, đá",
-                                "ĐVT": "m3", "Diễn giải": f"{L_actual:g} * {W_top:g} * 0.1",
-                                "Khối lượng": round(L_actual * W_top * 0.1, 3)
+                                "ĐVT": "m3", "Diễn giải": f"{L_actual:g} * {W_top:g} * {h_lot:g}",
+                                "Khối lượng": round(L_actual * W_top * h_lot, 3)
                             })
                         elif "BLOCK" in raw_upper:
                             all_results.append({
@@ -2047,11 +2067,33 @@ with tab1:
                     kc_be = clean_excel_value(row.get("Kết cấu bể/ga", "")).upper()
                     
                     h_pha_do_be = 0.0
-                    if "AL" in kc_be: h_pha_do_be = 0.12
-                    elif "ĐBT" in kc_be: h_pha_do_be = 0.20
-                    elif "HBT" in kc_be: h_pha_do_be = 0.10
-                    elif any(x in kc_be for x in ["TE", "ĐX", "GN", "GBT_DA"]): h_pha_do_be = 0.10
-                    elif "BLOCK" in kc_be: h_pha_do_be = 0.06
+                    ref_key = None
+                    if "AL" in kc_be: ref_key = next((k for k in st.session_state.db_ket_cau.keys() if k.startswith("Asphalt")), None)
+                    elif "ĐBT" in kc_be: ref_key = next((k for k in st.session_state.db_ket_cau.keys() if k.startswith("Đường bê tông")), None)
+                    elif "HBT" in kc_be: ref_key = next((k for k in st.session_state.db_ket_cau.keys() if k.startswith("Hè bê tông")), None)
+                    elif any(x in kc_be for x in ["TE", "ĐX", "GN", "GBT_DA"]): ref_key = next((k for k in st.session_state.db_ket_cau.keys() if k.startswith("Terrazzo")), None)
+                    elif "BLOCK" in kc_be: ref_key = next((k for k in st.session_state.db_ket_cau.keys() if k.startswith("Block")), None)
+                    
+                    if ref_key and ref_key in st.session_state.db_ket_cau:
+                        layers_list = st.session_state.db_ket_cau[ref_key]["layers"]
+                        if "AL" in kc_be:
+                            h_pha_do_be = sum([float(l["h"]) for l in layers_list if any(x in str(l["name"]).lower() for x in ["nhựa", "asphalt"])])
+                        elif "ĐBT" in kc_be or "HBT" in kc_be:
+                            h_pha_do_be = sum([float(l["h"]) for l in layers_list if any(x in str(l["name"]).lower() for x in ["mác 250", "bê tông mác"])])
+                        elif any(x in kc_be for x in ["TE", "ĐX", "GN", "GBT_DA"]):
+                            h_gach = sum([float(l["h"]) for l in layers_list if any(x in str(l["name"]).lower() for x in ["lát", "terrazzo", "đá xanh", "gạch"])])
+                            h_lot_layer = [float(l["h"]) for l in layers_list if "m150" in str(l["name"]).lower()]
+                            h_lot = h_lot_layer[0] if h_lot_layer else 0.10
+                            h_pha_do_be = h_gach + h_lot
+                        elif "BLOCK" in kc_be:
+                            h_pha_do_be = sum([float(l["h"]) for l in layers_list if "block" in str(l["name"]).lower()])
+                            
+                    if h_pha_do_be == 0.0:
+                        if "AL" in kc_be: h_pha_do_be = 0.12
+                        elif "ĐBT" in kc_be: h_pha_do_be = 0.20
+                        elif "HBT" in kc_be: h_pha_do_be = 0.10
+                        elif any(x in kc_be for x in ["TE", "ĐX", "GN", "GBT_DA"]): h_pha_do_be = 0.10
+                        elif "BLOCK" in kc_be: h_pha_do_be = 0.06
                     
                     H_dao_be = max(0, sau_do - h_pha_do_be)
                     tong_sau = H_dao_be # Tạm thời không cộng thêm độ cao đáy bể: H_dao_be + cao_day
@@ -2241,7 +2283,13 @@ with tab1:
                         }
                         ten_pha_do_be = next((v for k, v in mapping_pha_do_be.items() if k in kc_be), "Phá dỡ nền gạch giả đá coric")
                         
-                        v_pha_bt_lot = S_bi * 0.10
+                        h_lot_be = 0.10
+                        if ref_key and ref_key in st.session_state.db_ket_cau:
+                            h_lot_layer = [float(l["h"]) for l in st.session_state.db_ket_cau[ref_key]["layers"] if "m150" in str(l["name"]).lower()]
+                            if h_lot_layer:
+                                h_lot_be = h_lot_layer[0]
+                        
+                        v_pha_bt_lot = S_bi * h_lot_be
                         row_v_pha_do_be += S_bi * h_pha_do_be 
                         all_results.append({
                             "Nhóm": "1. Phá dỡ nền tuyến", "Tuyến/Đoạn": f"Bể {vi_tri}", 
@@ -2252,7 +2300,7 @@ with tab1:
                         all_results.append({
                             "Nhóm": "1. Phá dỡ nền tuyến", "Tuyến/Đoạn": f"Bể {vi_tri}",
                             "Hạng mục": "Phá dỡ kết cấu bê tông bê tông lót nền 10cm dưới kết cấu lớp gạch, đá",
-                            "ĐVT": "m3", "Diễn giải": f"1 * ({dai_bi:g} * {rong_bi:g} * 0.1)",
+                            "ĐVT": "m3", "Diễn giải": f"1 * ({dai_bi:g} * {rong_bi:g} * {h_lot_be:g})",
                             "Khối lượng": round(v_pha_bt_lot, 3)
                         })
                     elif "BLOCK" in kc_be:
@@ -2365,7 +2413,7 @@ with tab1:
                     ws.autofilter(0, 0, max_row, max_col)
                     for i, col in enumerate(df.columns):
                         # Tính chiều rộng sơ bộ
-                        content_len = df[col].fillna("").astype(str).map(len).max()
+                        content_len = df[col].astype(object).fillna("").astype(str).map(len).max()
                         header_len = len(str(col))
                         width = min(max(content_len, header_len) + 3, 70)
                         
