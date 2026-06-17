@@ -2365,7 +2365,7 @@ with tab1:
                     ws.autofilter(0, 0, max_row, max_col)
                     for i, col in enumerate(df.columns):
                         # Tính chiều rộng sơ bộ
-                        content_len = df[col].astype(str).map(len).max()
+                        content_len = df[col].fillna("").astype(str).map(len).max()
                         header_len = len(str(col))
                         width = min(max(content_len, header_len) + 3, 70)
                         
