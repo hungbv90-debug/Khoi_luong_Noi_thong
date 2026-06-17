@@ -1,0 +1,37 @@
+{
+  "hungbv14": {
+    "password_hash": "f4b9032ee7ad594c5dcf927e707a6fb4f1e288b4f2de6cbd6a97e1e0ca57d88a",
+    "role": "admin",
+    "display_name": "Admin - HungBV14",
+    "created_at": "2026-03-06T18:34:00",
+    "last_login": "2026-03-08 19:03:00",
+    "login_count": 24,
+    "last_ip": "Local/Unknown",
+    "last_location": "Mạng nội bộ (Local)"
+  },
+  "a": {
+    "role": "user",
+    "display_name": "a",
+    "created_at": "2026-03-06 19:33:20",
+    "last_login": "2026-03-06 19:34:05",
+    "login_count": 2
+  },
+  "h": {
+    "role": "user",
+    "display_name": "h",
+    "created_at": "2026-03-09 19:32:07",
+    "last_login": "2026-03-09 19:32:43",
+    "login_count": 2,
+    "last_ip": "Local/Unknown",
+    "last_location": "Mạng nội bộ (Local)"
+  },
+  "DESKTOP-6J1CD0U": {
+    "role": "user",
+    "display_name": "DESKTOP-6J1CD0U",
+    "created_at": "2026-03-09 19:37:04",
+    "last_login": "2026-06-17 20:38:26",
+    "login_count": 53,
+    "last_ip": "Local/Unknown",
+    "last_location": "Mạng nội bộ (Local)"
+  }
+}
