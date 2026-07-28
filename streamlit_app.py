@@ -475,6 +475,13 @@ if "db_ket_cau" not in st.session_state or "Hè bê tông 4 ống (Bể - Bể)"
 if "tables_expanded" not in st.session_state:
     st.session_state.tables_expanded = True
 
+if "custom_mapping" not in st.session_state:
+    st.session_state.custom_mapping = {}
+if "custom_kcs" not in st.session_state:
+    st.session_state.custom_kcs = []
+if "custom_base_mapping" not in st.session_state:
+    st.session_state.custom_base_mapping = {}
+
 
 # 1. THƯ VIỆN BỂ CÁP CHI TIẾT
 DB_BE_SPECS = {
@@ -556,7 +563,7 @@ def validate_be_row(row):
     
     # 2. Kiểm tra tính hợp lệ của dữ liệu
     kc_be = str(row.get("Kết cấu bể/ga", "")).strip()
-    if kc_be not in RAW_KET_CAU:
+    if kc_be not in get_raw_ket_cau_options():
         row_err.append(f"Kết cấu '{kc_be}' không hợp lệ")
         
     loai_be = str(row.get("Loại bể", "")).strip()
@@ -607,6 +614,10 @@ def map_pipe_type(val):
 def map_kc_keyword(val):
     if pd.isna(val) or str(val).strip() == "": return None
     v = str(val).strip().upper()
+    
+    if "custom_mapping" in st.session_state and v in st.session_state.custom_mapping:
+        return st.session_state.custom_mapping[v]
+
     if "ASPHALT" in v or "NHỰA" in v or "AL" in v: return "AL"
     if v == "TE": return "TE"
     if v == "ĐX": return "ĐX"
@@ -644,6 +655,14 @@ WELL_NAMES_END = WELL_NAMES_BASIC + ["Cột", "Tường"]
 WELL_NAMES = WELL_NAMES_BASIC
 
 RAW_KET_CAU = ["AL", "HBT", "TE", "ĐX", "GN", "GBT_DA", "ĐBT", "Đất cấp 2", "Đất cấp 3", "Block_KC_B1", "Ngoc"]
+
+def get_raw_ket_cau_options():
+    base = RAW_KET_CAU.copy()
+    if "custom_mapping" in st.session_state:
+        for k in st.session_state.custom_mapping.keys():
+            if k not in base:
+                base.append(k)
+    return base
 DATA_CAP_DAT = [2, 3]
 DATA_LOAI_ONG = [
     "D110x5.5", "D110x6.8", "D110/90", "D61", "D32", "D85/65", "D65/50", "D40/30", "D32/25", "Không ống",
@@ -660,7 +679,9 @@ def map_ket_cau(raw_str, so_ong, kieu_ket_noi):
     raw = str(raw_str).upper()
     ong_str = f"{so_ong} ống" if so_ong in [1, 2, 3, 4] else "1 ống"
     
-    if raw == "AL": loai = "Asphalt"
+    if "custom_mapping" in st.session_state and raw in st.session_state.custom_mapping:
+        loai = st.session_state.custom_mapping[raw]
+    elif raw == "AL": loai = "Asphalt"
     elif raw == "HBT": loai = "Hè bê tông"
     elif raw == "ĐBT": loai = "Đường bê tông"
     elif raw in ["TE", "ĐX", "GN", "GBT_DA", "TE, ĐX, GN"]: loai = "Terrazzo, Đá xanh, Gạch nung, Gạch giả đá"
@@ -710,7 +731,7 @@ def validate_row(row, db):
         return "Thiếu Kết cấu rãnh"
     
     kc_ranh = str(kc_ranh).strip()
-    if kc_ranh not in RAW_KET_CAU:
+    if kc_ranh not in get_raw_ket_cau_options():
         row_err.append(f"Kết cấu '{kc_ranh}' không hợp lệ")
         return f"Kết cấu '{kc_ranh}' không hợp lệ"
 
@@ -1479,7 +1500,7 @@ tab1, tab2, tab3, tab4 = st.tabs(["🚀 Tính Toán & Báo Cáo", "🔍 Tra Cứ
 with tab1:
     column_config = {
         "STT": st.column_config.NumberColumn("STT", disabled=True, width="small"),
-        "Kết cấu rãnh": st.column_config.SelectboxColumn("Kết cấu rãnh", options=RAW_KET_CAU, required=True),
+        "Kết cấu rãnh": st.column_config.SelectboxColumn("Kết cấu rãnh", options=get_raw_ket_cau_options(), required=True),
         "Cấp đất": st.column_config.SelectboxColumn("Cấp đất", options=DATA_CAP_DAT, required=True),
         "Bể đầu": st.column_config.TextColumn("Bể đầu", required=True),
         "Bể cuối": st.column_config.TextColumn("Bể cuối", required=True),
@@ -1525,7 +1546,7 @@ with tab1:
     with st.expander("🕳️ 2. Bảng Nhập Liệu Bể Ga", expanded=st.session_state.tables_expanded):
         column_config_be = {
             "STT": st.column_config.NumberColumn("STT", disabled=True, width="small"),
-            "Kết cấu bể/ga": st.column_config.SelectboxColumn("Kết cấu bể/ga", options=RAW_KET_CAU, required=True),
+            "Kết cấu bể/ga": st.column_config.SelectboxColumn("Kết cấu bể/ga", options=get_raw_ket_cau_options(), required=True),
             "Cấp đất": st.column_config.SelectboxColumn("Cấp đất", options=DATA_CAP_DAT, required=True),
             "Vị trí bể": st.column_config.TextColumn("Vị trí bể", required=True),
             "Loại bể": st.column_config.SelectboxColumn("Loại bể", options=WELL_NAMES, required=True),
@@ -1623,6 +1644,21 @@ with tab1:
                     # Xác định cao độ phá dỡ
                     h_pha_do = 0.0
                     raw_upper = ket_cau_raw.upper()
+                    
+                    # Ánh xạ ngược lại raw gốc nếu là kết cấu tùy chỉnh để kế thừa hạng mục tính toán
+                    if raw_upper in st.session_state.get('custom_base_mapping', {}):
+                        base_loai = st.session_state.custom_base_mapping[raw_upper]
+                        canonical_map = {
+                            "Asphalt": "AL",
+                            "Hè bê tông": "HBT",
+                            "Đường bê tông": "ĐBT",
+                            "Terrazzo, Đá xanh, Gạch nung, Gạch giả đá": "TE",
+                            "Đất cấp 2": "ĐẤT CẤP 2",
+                            "Đất cấp 3": "ĐẤT CẤP 3",
+                            "Block_KC_B1": "BLOCK_KC_B1"
+                        }
+                        if base_loai in canonical_map:
+                            raw_upper = canonical_map[base_loai]
                     if ket_cau in st.session_state.db_ket_cau:
                         layers_list = st.session_state.db_ket_cau[ket_cau]["layers"]
                         if "AL" in raw_upper:
@@ -1843,31 +1879,33 @@ with tab1:
                     
                     h_cat_min = (get_max_d(loai_ong_t1) * 1) + (get_max_d(loai_ong_t2) * 1 if so_tang == 2 else 0) + 0.10 # Thêm 0.05m cát trên và 0.05m cát dưới
                     H_min = H_cung + h_cat_min
+                    
+                    if H < H_min:
+                        tuyen_warnings[tuyen] = f"Sâu rãnh đào ({H:.3f}m) < Độ sâu tối thiểu khuyến nghị ({H_min:.3f}m)."
+                        
                     adjusted_layers = []
-                    if H >= H_min:
-                        for layer in st.session_state.db_ket_cau[ket_cau]["layers"]:
-                            if str(layer["h"]).lower() == "auto":
-                                h_val = H_cat_user if H_cat_user > 0 else (H - H_cung)
-                            else:
-                                h_val = float(layer["h"])
-                            adjusted_layers.append({"name": layer["name"], "h": h_val, "type": layer["type"]})
-                    else:
-                        tuyen_warnings[tuyen] = f"Sâu rãnh đào ({H:.3f}m) < Độ sâu tối thiểu ({H_min:.3f}m). Các lớp nền bề mặt sẽ bị co giảm!"
-                        h_cat_actual = H_cat_user if H_cat_user > 0 else (h_cat_min if H >= h_cat_min else H)
-                        rem_H = max(0.0, H - h_cat_actual)
-                        for layer in [l for l in st.session_state.db_ket_cau[ket_cau]["layers"] if str(l["h"]).lower() != "auto"]:
+                    
+                    sand_alloc = 0.0
+                    if H_cat_user > 0:
+                        sand_alloc = min(H_cat_user, H)
+                        
+                    rem_H = H - sand_alloc
+                    
+                    for layer in st.session_state.db_ket_cau[ket_cau]["layers"]:
+                        if str(layer["h"]).lower() == "auto":
+                            h_alloc = round(sand_alloc + rem_H, 4)
+                            rem_H = 0.0
+                        else:
                             h_req = float(layer["h"])
-                            h_alloc = min(h_req, rem_H)
-                            rem_H -= h_alloc
-                            adjusted_layers.append({"name": layer["name"], "h": h_alloc, "type": layer["type"]})
-                        auto_l = next((l for l in st.session_state.db_ket_cau[ket_cau]["layers"] if str(l["h"]).lower() == "auto"), None)
-                        if auto_l:
-                            adjusted_layers.append({"name": auto_l["name"], "h": h_cat_actual, "type": auto_l["type"]})
+                            h_alloc = round(min(h_req, rem_H), 4)
+                            rem_H = round(rem_H - h_alloc, 4)
+                            
+                        adjusted_layers.append({"name": layer["name"], "h": h_alloc, "type": layer["type"]})
 
                     curr_d = 0.0
                     for layer in adjusted_layers:
                         h_l = layer["h"]
-                        if h_l <= 0:
+                        if h_l <= 1e-6:
                             continue
                         name_l = layer["name"]
                         type_l = layer["type"]
@@ -2519,40 +2557,79 @@ with tab2:
 
     st.markdown("#### 2. Thông số Kết Cấu Rãnh & Giả lập")
     
+    with st.expander("➕ Thêm kết cấu mới (Tùy chỉnh)", expanded=False):
+        c1, c2, c3 = st.columns([2, 2, 1])
+        with c1:
+            new_kc_name = st.text_input("Tên kết cấu mới (Mã trong Excel, vd: BT30):")
+        with c2:
+            base_options = ["Asphalt", "Hè bê tông", "Đường bê tông", "Terrazzo, Đá xanh, Gạch nung, Gạch giả đá", "Đất cấp 2", "Đất cấp 3", "Block_KC_B1"]
+            base_kc_name = st.selectbox("Sao chép cấu tạo từ:", options=base_options)
+        with c3:
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("Thêm kết cấu"):
+                if new_kc_name.strip():
+                    new_ma = new_kc_name.strip().upper()
+                    new_loai = new_kc_name.strip()
+                    
+                    # Copy definitions
+                    import copy
+                    for ong in [1, 2, 3, 4]:
+                        for noi in ["Bể - Bể", "Ganivo - Ganivo, Bể"]:
+                            base_key = f"{base_kc_name} {ong} ống ({noi})"
+                            if base_key not in st.session_state.db_ket_cau:
+                                base_key = f"{base_kc_name} {min(ong, 3)} ống ({noi})"
+                            if base_key in st.session_state.db_ket_cau:
+                                new_key = f"{new_loai} {ong} ống ({noi})"
+                                st.session_state.db_ket_cau[new_key] = copy.deepcopy(st.session_state.db_ket_cau[base_key])
+                            
+                    st.session_state.custom_mapping[new_ma] = new_loai
+                    st.session_state.custom_base_mapping[new_ma] = base_kc_name
+                    if new_loai not in st.session_state.custom_kcs:
+                        st.session_state.custom_kcs.append(new_loai)
+                    st.success(f"Đã thêm kết cấu '{new_loai}'.")
+                    st.rerun()
+                else:
+                    st.error("Vui lòng nhập tên kết cấu!")
+    
     col_sel1, col_sel2, col_sel3 = st.columns(3)
     
     with col_sel3:
-        loai_kc_chon = st.selectbox("Chọn xem loại kết cấu (Drop-down để chọn):", options=["Asphalt", "Hè bê tông", "Đường bê tông", "Terrazzo, Đá xanh, Gạch nung, Gạch giả đá", "Đất cấp 2", "Đất cấp 3", "Block_KC_B1"])
+        base_loai_kc_options = ["Asphalt", "Hè bê tông", "Đường bê tông", "Terrazzo, Đá xanh, Gạch nung, Gạch giả đá", "Đất cấp 2", "Đất cấp 3", "Block_KC_B1"]
+        if "custom_kcs" in st.session_state and st.session_state.custom_kcs:
+            base_loai_kc_options.extend(st.session_state.custom_kcs)
+        loai_kc_chon = st.selectbox("Chọn xem loại kết cấu (Drop-down để chọn):", options=base_loai_kc_options)
+        
+    loai_kc_check = st.session_state.custom_base_mapping.get(loai_kc_chon, loai_kc_chon) if "custom_base_mapping" in st.session_state else loai_kc_chon
     
     noi_options = ["Bể - Bể", "Ganivo - Ganivo, Bể"]
-    if loai_kc_chon == "Đất cấp 3":
+    if loai_kc_check == "Đất cấp 3":
         noi_options = ["Bể - Bể", "Ganivo - Ganivo, Bể"]
-    elif loai_kc_chon == "Block_KC_B1":
+    elif loai_kc_check == "Block_KC_B1":
         noi_options = ["Bể - Bể", "Ganivo - Ganivo, Bể"]
         
     with col_sel2:
         # Nếu đang là Đất cấp 2 thì mặc định chọn Ganivo
-        idx_noi = 1 if len(noi_options) > 1 and loai_kc_chon == "Đất cấp 2" else 0
+        idx_noi = 1 if len(noi_options) > 1 and loai_kc_check == "Đất cấp 2" else 0
         noi_tu_chon = st.selectbox("Nối từ:", options=noi_options, index=idx_noi)
 
     ong_options = [1, 2, 3]
-    if loai_kc_chon == "Đất cấp 2" and noi_tu_chon == "Ganivo - Ganivo, Bể":
+    if loai_kc_check == "Đất cấp 2" and noi_tu_chon == "Ganivo - Ganivo, Bể":
         ong_options = [1, 2]
-    elif loai_kc_chon == "Đất cấp 2" and noi_tu_chon == "Bể - Bể":
+    elif loai_kc_check == "Đất cấp 2" and noi_tu_chon == "Bể - Bể":
         ong_options = [2, 3]
-    elif loai_kc_chon == "Đất cấp 3" and noi_tu_chon == "Ganivo - Ganivo, Bể":
+    elif loai_kc_check == "Đất cấp 3" and noi_tu_chon == "Ganivo - Ganivo, Bể":
         ong_options = [1]
-    elif loai_kc_chon == "Đất cấp 3" and noi_tu_chon == "Bể - Bể":
+    elif loai_kc_check == "Đất cấp 3" and noi_tu_chon == "Bể - Bể":
         ong_options = [2]
-    elif loai_kc_chon == "Block_KC_B1" and noi_tu_chon == "Ganivo - Ganivo, Bể":
+    elif loai_kc_check == "Block_KC_B1" and noi_tu_chon == "Ganivo - Ganivo, Bể":
         ong_options = [1, 2]
-    elif loai_kc_chon == "Block_KC_B1" and noi_tu_chon == "Bể - Bể":
+    elif loai_kc_check == "Block_KC_B1" and noi_tu_chon == "Bể - Bể":
         ong_options = [2, 3]
-    elif loai_kc_chon == "Asphalt" and noi_tu_chon == "Ganivo - Ganivo, Bể":
+    elif loai_kc_check == "Asphalt" and noi_tu_chon == "Ganivo - Ganivo, Bể":
         ong_options = [1, 2]
-    elif loai_kc_chon in ["Hè bê tông", "Đường bê tông", "Terrazzo, Đá xanh, Gạch nung, Gạch giả đá"] and noi_tu_chon == "Ganivo - Ganivo, Bể":
+    elif loai_kc_check in ["Hè bê tông", "Đường bê tông", "Terrazzo, Đá xanh, Gạch nung, Gạch giả đá"] and noi_tu_chon == "Ganivo - Ganivo, Bể":
         ong_options = [1, 2]
-    elif loai_kc_chon in ["Hè bê tông", "Terrazzo, Đá xanh, Gạch nung, Gạch giả đá", "Asphalt"] and noi_tu_chon == "Bể - Bể":
+    elif loai_kc_check in ["Hè bê tông", "Terrazzo, Đá xanh, Gạch nung, Gạch giả đá", "Asphalt"] and noi_tu_chon == "Bể - Bể":
         ong_options = [1, 2, 3, 4]
         
     with col_sel1:
